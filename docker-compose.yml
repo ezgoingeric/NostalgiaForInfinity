@@ -1,6 +1,29 @@
 ---
 version: '3'
 services:
+  freqtrade:
+    image: freqtradeorg/freqtrade:stable
+    # image: freqtradeorg/freqtrade:develop
+    # Use plotting image
+    # image: freqtradeorg/freqtrade:develop_plot
+    # Build step - only needed when additional dependencies are needed
+    # build:
+    #   context: .
+    #   dockerfile: "./docker/Dockerfile.custom"
+    restart: unless-stopped
+    container_name: freqtrade
+    volumes:
+      - "./user_data:/freqtrade/user_data"
+    # Expose api on port 8080 (localhost only)
+    # Please read the https://www.freqtrade.io/en/latest/rest-api/ documentation
+    # before enabling this.
+    ports:
+      - "127.0.0.1:8080:8080"
+    # Default command used when running `docker compose up`
+    command: >
+      trade
+      --strategy NostalgiaForInfinityNext
+      --config user_data/config.json --config user_data/config-private.json
   tests:
     build:
        context: .
@@ -25,7 +48,7 @@ services:
       --strategy-list NostalgiaForInfinityNext
       --timerange ${TIMERANGE:-20210601-20210701}
       --config user_data/data/pairlists.json
-      --config user_data/data/${EXCHANGE:-binance}-usdt-static.json
+      --config user_data/data/${EXCHANGE:-kucoin}-usdt-static.json
       --max-open-trades ${MAX_OPEN_TRADES:-5}
       --stake-amount ${STAKE_AMOUNT:-unlimited}
   download-data:
@@ -35,8 +58,8 @@ services:
       - "./user_data:/freqtrade/user_data"
     command: >
       download-data
-      --timerange ${START_DATE:-20201201}-${END_DATE:-20210701}
+      --timerange ${START_DATE:-20201201}-${END_DATE:-20210815}
       --timeframe 5m 1h
-      --datadir user_data/data/${EXCHANGE:-binance}
+      --datadir user_data/data/${EXCHANGE:-kucoin}
       --config user_data/data/pairlists.json
-      --config user_data/data/${EXCHANGE:-binance}-usdt-static.json
+      --config user_data/data/${EXCHANGE:-kucoin}-usdt-static.json
