@@ -2,7 +2,10 @@
 version: '3'
 services:
   freqtrade:
-    image: freqtradeorg/freqtrade:stable
+    # image: freqtradeorg/freqtrade:stable
+    build:
+      context: .
+      dockerfile: "./docker/Dockerfile.custom"
     # image: freqtradeorg/freqtrade:develop
     # Use plotting image
     # image: freqtradeorg/freqtrade:develop_plot
@@ -23,12 +26,12 @@ services:
     command: >
       trade
       --strategy NostalgiaForInfinityNext
-      --config user_data/config.json --config user_data/config-private.json
+      --config user_data/config.json --config user_data/config-private-freqtrade.json --config user_data/config-private-telegram.json --verbose -vvv
   tests:
     build:
        context: .
        dockerfile: "./docker/Dockerfile.custom"
-    container_name: freqtrade-backtesting
+    container_name: freqtrade-tests
     volumes:
       - "./:/testing"
     command: >
@@ -53,7 +56,7 @@ services:
       --stake-amount ${STAKE_AMOUNT:-unlimited}
   download-data:
     image: freqtradeorg/freqtrade:develop
-    container_name: download-data
+    container_name: freqtrade-download-data
     volumes:
       - "./user_data:/freqtrade/user_data"
     command: >
