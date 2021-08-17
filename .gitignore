@@ -143,4 +143,5 @@ user_data/notebooks
 user_data/plot
 user_data/config-private-freqtrade.json
 user_data/config-private-telegram.json
+user_data/strategies
 artifacts/
