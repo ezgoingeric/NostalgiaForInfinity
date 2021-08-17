@@ -179,6 +179,7 @@ class NostalgiaForInfinityNext(IStrategy):
         "buy_condition_38_enable": True,
         "buy_condition_39_enable": True,
         "buy_condition_40_enable": True,
+        "buy_condition_41_enable": True,
         #############
     }
 
@@ -964,10 +965,10 @@ class NostalgiaForInfinityNext(IStrategy):
             "ema_fast_len"              : "100",
             "ema_slow"                  : True,
             "ema_slow_len"              : "15",
-            "close_above_ema_fast"      : False,
-            "close_above_ema_fast_len"  : "50",
-            "close_above_ema_slow"      : False,
-            "close_above_ema_slow_len"  : "50",
+            "close_above_ema_fast"      : True,
+            "close_above_ema_fast_len"  : "100",
+            "close_above_ema_slow"      : True,
+            "close_above_ema_slow_len"  : "200",
             "sma200_rising"             : False,
             "sma200_rising_val"         : "30",
             "sma200_1h_rising"          : False,
@@ -997,6 +998,26 @@ class NostalgiaForInfinityNext(IStrategy):
             "safe_pump"                 : False,
             "safe_pump_type"            : "50",
             "safe_pump_period"          : "48",
+            "btc_1h_not_downtrend"      : True
+        },
+        41: {
+            "ema_fast"                  : False,
+            "ema_fast_len"              : "12",
+            "ema_slow"                  : True,
+            "ema_slow_len"              : "12",
+            "close_above_ema_fast"      : False,
+            "close_above_ema_fast_len"  : "200",
+            "close_above_ema_slow"      : False,
+            "close_above_ema_slow_len"  : "200",
+            "sma200_rising"             : False,
+            "sma200_rising_val"         : "30",
+            "sma200_1h_rising"          : False,
+            "sma200_1h_rising_val"      : "20",
+            "safe_dips"                 : True,
+            "safe_dips_type"            : "50",
+            "safe_pump"                 : False,
+            "safe_pump_type"            : "120",
+            "safe_pump_period"          : "24",
             "btc_1h_not_downtrend"      : True
         }
     }
@@ -1395,8 +1416,8 @@ class NostalgiaForInfinityNext(IStrategy):
     buy_38_cti = -0.96
 
     buy_39_cti = -0.77
-    buy_39_r = -70.0
-    buy_39_r_1h = -62.0
+    buy_39_r = -60.0
+    buy_39_r_1h = -38.0
 
     buy_40_hrsi = 30.0
     buy_40_cci = -240.0
@@ -1404,6 +1425,12 @@ class NostalgiaForInfinityNext(IStrategy):
     buy_40_cti = -0.8
     buy_40_r = -90.0
     buy_40_r_1h = -90.0
+
+    buy_41_cti_1h = -0.84
+    buy_41_r_1h = -42.0
+    buy_41_ma_offset = 0.97
+    buy_41_cti = -0.8
+    buy_41_r = -75.0
 
     # Sell
 
@@ -2292,22 +2319,21 @@ class NostalgiaForInfinityNext(IStrategy):
         return False, None
 
     def sell_quick_mode(self, current_profit: float, max_profit:float, last_candle, previous_candle_1) -> tuple:
-        if (0.06 > current_profit > 0.02) and (last_candle['rsi_14'] > 79.0):
+        if (0.06 > current_profit > 0.02) and (last_candle['rsi_14'] > 80.0):
             return True, 'signal_profit_q_1'
 
-        if (0.06 > current_profit > 0.02) and (last_candle['cti'] > 0.9):
+        if (0.06 > current_profit > 0.02) and (last_candle['cti'] > 0.95):
             return True, 'signal_profit_q_2'
 
         if (last_candle['close'] < last_candle['atr_high_thresh_q']) and (previous_candle_1['close'] > previous_candle_1['atr_high_thresh_q']):
-            if (current_profit > 0.0):
+            if (0.05 > current_profit > 0.02):
                 return True, 'signal_profit_q_atr'
             elif (current_profit < -0.08):
                 return True, 'signal_stoploss_q_atr'
 
-        if (current_profit > 0.0):
-            if (last_candle['pm'] <= last_candle['pmax_thresh']) and (last_candle['close'] > last_candle['sma_21'] * 1.1):
+        if (current_profit > 0.02) and (last_candle['pm'] <= last_candle['pmax_thresh']) and (last_candle['close'] > last_candle['sma_21'] * 1.1):
                 return True, 'signal_profit_q_pmax_bull'
-            if (last_candle['pm'] > last_candle['pmax_thresh']) and (last_candle['close'] > last_candle['sma_21'] * 1.016):
+        if (current_profit > 0.001) and (last_candle['pm'] > last_candle['pmax_thresh']) and (last_candle['close'] > last_candle['sma_21'] * 1.016):
                 return True, 'signal_profit_q_pmax_bear'
 
         return False, None
@@ -2639,6 +2665,9 @@ class NostalgiaForInfinityNext(IStrategy):
         # Williams %R
         informative_1h['r_480'] = williams_r(informative_1h, period=480)
 
+        # CTI
+        informative_1h['cti'] = pta.cti(informative_1h["close"], length=20)
+
         # Ichimoku
         ichi = ichimoku(informative_1h, conversion_line_period=20, base_line_periods=60, laggin_span=120, displacement=30)
         informative_1h['chikou_span'] = ichi['chikou_span']
@@ -2648,6 +2677,7 @@ class NostalgiaForInfinityNext(IStrategy):
         informative_1h['senkou_b'] = ichi['senkou_span_b']
         informative_1h['leading_senkou_span_a'] = ichi['leading_senkou_span_a']
         informative_1h['leading_senkou_span_b'] = ichi['leading_senkou_span_b']
+        informative_1h['chikou_span_greater'] = (informative_1h['chikou_span'] > informative_1h['senkou_a']).shift(30).fillna(False)
         informative_1h.loc[:, 'cloud_top'] = informative_1h.loc[:, ['senkou_a', 'senkou_b']].max(axis=1)
 
         # EFI - Elders Force Index
@@ -3456,17 +3486,17 @@ class NostalgiaForInfinityNext(IStrategy):
                     item_buy_logic.append(dataframe['tenkan_sen_1h'] > dataframe['kijun_sen_1h'])
                     item_buy_logic.append(dataframe['close'] > dataframe['cloud_top_1h'])
                     item_buy_logic.append(dataframe['leading_senkou_span_a_1h'] > dataframe['leading_senkou_span_b_1h'])
-                    item_buy_logic.append(dataframe['chikou_span_1h'] > dataframe['senkou_a_1h'])
+                    item_buy_logic.append(dataframe['chikou_span_greater_1h'])
                     item_buy_logic.append(dataframe['efi_1h'] > 0)
                     item_buy_logic.append(dataframe['ssl_up_1h'] > dataframe['ssl_down_1h'])
                     item_buy_logic.append(dataframe['close'] < dataframe['ssl_up_1h'])
                     item_buy_logic.append(dataframe['cti'] < self.buy_39_cti)
                     item_buy_logic.append(dataframe['r_480'] > self.buy_39_r)
                     item_buy_logic.append(dataframe['r_480_1h'] > self.buy_39_r_1h)
+                    item_buy_logic.append(dataframe['rsi_14_1h'] > dataframe['rsi_14_1h'].shift(12))
                     # Start of trend
                     item_buy_logic.append(
                         (dataframe['leading_senkou_span_a_1h'].shift(12) < dataframe['leading_senkou_span_b_1h'].shift(12)) |
-                        (dataframe['efi_1h'] < 0) |
                         (dataframe['ssl_up_1h'].shift(12) < dataframe['ssl_down_1h'].shift(12))
                     )
 
@@ -3482,6 +3512,19 @@ class NostalgiaForInfinityNext(IStrategy):
                     item_buy_logic.append(dataframe['cti'] < self.buy_40_cti)
                     item_buy_logic.append(dataframe['r_480'] > self.buy_40_r)
                     item_buy_logic.append(dataframe['r_480_1h'] > self.buy_40_r_1h)
+
+                # Condition #41
+                elif index == 41:
+                    # Non-Standard protections (add below)
+
+                    # Logic
+                    item_buy_logic.append(dataframe['ema_200_1h'] > dataframe['ema_200_1h'].shift(12))
+                    item_buy_logic.append(dataframe['ema_200_1h'].shift(12) > dataframe['ema_200_1h'].shift(24))
+                    item_buy_logic.append(dataframe['cti_1h'] < self.buy_41_cti_1h)
+                    item_buy_logic.append(dataframe['r_480_1h'] > self.buy_41_r_1h)
+                    item_buy_logic.append(dataframe['close'] < dataframe['sma_75'] * self.buy_41_ma_offset)
+                    item_buy_logic.append(dataframe['cti'] < self.buy_41_cti)
+                    item_buy_logic.append(dataframe['r_480'] < self.buy_41_r)
 
                 item_buy_logic.append(dataframe['volume'] > 0)
                 item_buy = reduce(lambda x, y: x & y, item_buy_logic)
