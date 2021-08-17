@@ -141,6 +141,6 @@ user_data/hyperopts
 user_data/logs
 user_data/notebooks
 user_data/plot
-user_data/user_data/config-private-freqtrade.json
-user_data/user_data/config-private-telegram.json
+user_data/config-private-freqtrade.json
+user_data/config-private-telegram.json
 artifacts/
