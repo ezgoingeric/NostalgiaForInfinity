@@ -134,14 +134,29 @@ user_data/data/*.json
 # IntelliJ
 .idea
 
-user_data/data/*/*.json
+user_data/data
 user_data/backtest_results
 user_data/hyperopt_results
 user_data/hyperopts
 user_data/logs
 user_data/notebooks
 user_data/plot
-user_data/config-private-freqtrade.json
-user_data/config-private-telegram.json
+
+user_data/config1.json
+user_data/config.live1.json
+user_data/config.dryrun1.json
+user_data/config-private-api-server1.json
+user_data/config-private-freqtrade1.json
+user_data/config-private-telegram1.json
+
+user_data/config2.json
+user_data/config.live2.json
+user_data/config.dryrun2.json
+user_data/config-private-api-server2.json
+user_data/config-private-freqtrade2.json
+user_data/config-private-telegram2.json
+
+.docker-compose.yml
+
 user_data/strategies
 artifacts/
