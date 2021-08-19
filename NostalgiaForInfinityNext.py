@@ -12,11 +12,13 @@ from freqtrade.exchange import timeframe_to_prev_date
 from pandas import DataFrame, Series, concat
 from functools import reduce
 import math
+from typing import Dict
 from freqtrade.persistence import Trade
 from datetime import datetime, timedelta
 from technical.util import resample_to_interval, resampled_merge
 from technical.indicators import zema, VIDYA, ichimoku
-
+import os
+import json
 
 log = logging.getLogger(__name__)
 
@@ -31,6 +33,7 @@ else:
 
 ###########################################################################################################
 ##                NostalgiaForInfinityV8 by iterativ                                                     ##
+##           https://github.com/iterativv/NostalgiaForInfinity                                           ##
 ##                                                                                                       ##
 ##    Strategy for Freqtrade https://github.com/freqtrade/freqtrade                                      ##
 ##                                                                                                       ##
@@ -49,6 +52,7 @@ else:
 ##                                                                                                       ##
 ###########################################################################################################
 ##               HOLD SUPPORT                                                                            ##
+##                                                                                                       ##
 ##   In case you want to have SOME of the trades to only be sold when on profit, add a file named        ##
 ##   "hold-trades.json" in the same directory as this strategy.                                          ##
 ##                                                                                                       ##
@@ -76,21 +80,15 @@ else:
 ##   ETH (ERC20): 0x83D3cFb8001BDC5d2211cBeBB8cB3461E5f7Ec91                                             ##
 ##   BEP20/BSC (ETH, BNB, ...): 0x86A0B21a20b39d16424B7c8003E4A7e12d78ABEe                               ##
 ##                                                                                                       ##
+##               REFERRAL LINKS                                                                          ##
+##                                                                                                       ##
+##  Binance: https://accounts.binance.com/en/register?ref=37365811                                       ##
+##  Kucoin: https://www.kucoin.com/ucenter/signup?rcode=rJTLZ9K                                          ##
 ###########################################################################################################
 
 
 class NostalgiaForInfinityNext(IStrategy):
     INTERFACE_VERSION = 2
-
-    plot_config = {
-        'main_plot': {
-             },
-        'subplots': {
-            "buy tag": {
-                'buy_tag': {'color': 'green'}
-            },
-        }
-    }
 
     # ROI table:
     minimal_roi = {
@@ -136,6 +134,9 @@ class NostalgiaForInfinityNext(IStrategy):
 
     # Number of candles the strategy requires before producing valid signals
     startup_candle_count: int = 480
+
+    # Initialize custom_info
+    custom_info = {}
 
     # Optional order type mapping.
     order_types = {
@@ -209,6 +210,13 @@ class NostalgiaForInfinityNext(IStrategy):
         "sell_condition_6_enable": True,
         "sell_condition_7_enable": True,
         "sell_condition_8_enable": True,
+        #############
+    }
+
+    profit_target_params = {
+        #############
+        # Enable/Disable conditions
+        "profit_target_1_enable": False,
         #############
     }
 
@@ -469,7 +477,7 @@ class NostalgiaForInfinityNext(IStrategy):
             "sma200_1h_rising"          : True,
             "sma200_1h_rising_val"      : "24",
             "safe_dips"                 : True,
-            "safe_dips_type"            : "20",
+            "safe_dips_type"            : "130",
             "safe_pump"                 : False,
             "safe_pump_type"            : "50",
             "safe_pump_period"          : "24",
@@ -549,8 +557,8 @@ class NostalgiaForInfinityNext(IStrategy):
             "sma200_1h_rising"          : False,
             "sma200_1h_rising_val"      : "50",
             "safe_dips"                 : True,
-            "safe_dips_type"            : "120",
-            "safe_pump"                 : True,
+            "safe_dips_type"            : "130",
+            "safe_pump"                 : False,
             "safe_pump_type"            : "120",
             "safe_pump_period"          : "24",
             "btc_1h_not_downtrend"      : False
@@ -838,15 +846,15 @@ class NostalgiaForInfinityNext(IStrategy):
         32: {
             "ema_fast"                  : False,
             "ema_fast_len"              : "50",
-            "ema_slow"                  : False,
-            "ema_slow_len"              : "100",
+            "ema_slow"                  : True,
+            "ema_slow_len"              : "12",
             "close_above_ema_fast"      : False,
             "close_above_ema_fast_len"  : "50",
             "close_above_ema_slow"      : False,
             "close_above_ema_slow_len"  : "100",
             "sma200_rising"             : False,
             "sma200_rising_val"         : "30",
-            "sma200_1h_rising"          : False,
+            "sma200_1h_rising"          : True,
             "sma200_1h_rising_val"      : "50",
             "safe_dips"                 : True,
             "safe_dips_type"            : "120",
@@ -1365,9 +1373,10 @@ class NostalgiaForInfinityNext(IStrategy):
     buy_ewo_12 = 1.8
     buy_cti_12 = -0.7
 
-    buy_ma_offset_13 = 0.99
-    buy_cti_13 = -0.82
-    buy_ewo_13 = -9.0
+    buy_13_ma_offset = 0.99
+    buy_13_cti = -0.82
+    buy_13_ewo = -6.5
+    buy_13_r_1h = -78.0
 
     buy_ema_open_mult_14 = 0.014
     buy_bb_offset_14 = 0.988
@@ -1384,10 +1393,12 @@ class NostalgiaForInfinityNext(IStrategy):
     buy_ewo_16 = 2.8
     buy_cti_16 = -0.84
 
-    buy_ma_offset_17 = 0.99
-    buy_ewo_17 = -9.4
-    buy_cti_17 = -0.96
-    buy_volume_17 = 2.0
+    buy_17_ma_offset = 0.99
+    buy_17_ewo = -9.6
+    buy_17_cti = -0.96
+    buy_17_cti_1h = -0.92
+    buy_17_r_1h = -20.0
+    buy_17_volume = 2.0
 
     buy_rsi_18 = 33.0
     buy_bb_offset_18 = 0.986
@@ -1457,12 +1468,14 @@ class NostalgiaForInfinityNext(IStrategy):
     buy_31_ma_offset = 0.962
     buy_31_ewo = -10.4
     buy_31_wr = -90.0
-    buy_31_cti = -0.89
+    buy_31_cti = -0.898
 
-    buy_32_ma_offset = 0.934
-    buy_32_dip = 0.005
+    buy_32_ma_offset = 0.948
     buy_32_rsi = 46.0
-    buy_32_cti = -0.8
+    buy_32_cti = -0.86
+    buy_32_cti_1h = -0.2
+    buy_32_r_480_1h = -48.0
+    buy_32_crsi_1h = 10.0
 
     buy_33_ma_offset = 0.988
     buy_33_rsi = 32.0
@@ -1525,9 +1538,9 @@ class NostalgiaForInfinityNext(IStrategy):
     buy_43_r = -90.0
 
     buy_44_ma_offset = 0.982
-    buy_44_ewo = -18.143
-    buy_44_cti = -0.8
-    buy_44_r_1h = -75.0
+    buy_44_ewo = -18.0
+    buy_44_cti = -0.73
+    buy_44_crsi_1h = 10.0
 
     # Sell
 
@@ -1826,9 +1839,218 @@ class NostalgiaForInfinityNext(IStrategy):
     sell_custom_long_profit_max_1 = 0.04
     sell_custom_long_duration_min_1 = 900
 
+    # Profit Target Signal
+    profit_target_1_enable = False
     #############################################################
 
     hold_trades_cache = None
+
+    plot_config = {
+        'main_plot': {
+            'ema_12_1h': {
+                'color': 'rgba(200,200,100,0.4)',
+                'type': 'line'
+            },
+            'ema_15_1h': {
+                'color': 'rgba(200,180,100,0.4)',
+                'type': 'line'
+            },
+            'ema_20_1h': {
+                'color': 'rgba(200,160,100,0.4)',
+                'type': 'line'
+            },
+            'ema_25_1h': {
+                'color': 'rgba(200,140,100,0.4)',
+                'type': 'line'
+            },
+            'ema_26_1h': {
+                'color': 'rgba(200,120,100,0.4)',
+                'type': 'line'
+            },
+            'ema_35_1h': {
+                'color': 'rgba(200,100,100,0.4)',
+                'type': 'line'
+            },
+            'ema_50_1h': {
+                'color': 'rgba(200,80,100,0.4)',
+                'type': 'line'
+            },
+            'ema_100_1h': {
+                'color': 'rgba(200,60,100,0.4)',
+                'type': 'line'
+            },
+            'ema_200_1h': {
+                'color': 'rgba(200,40,100,0.4)',
+                'type': 'line'
+            },
+            'sma_200_1h': {
+                'color': 'rgba(150,20,100,0.4)',
+                'type': 'line'
+            },
+            'pm': {
+                'color': 'rgba(100,20,100,0.5)',
+                'type': 'line'
+            }
+        },
+        'subplots': {
+            'buy tag': {
+                'buy_tag': {'color': 'green'}
+            },
+            'RSI/BTC': {
+                'btc_not_downtrend_1h': {
+                    'color': 'yellow'
+                },
+                'btc_rsi_14_1h': {
+                    'color': 'green'
+                },
+                'rsi_14_1h': {
+                    'color': '#f41cd1',
+                    'type': 'line'
+                },
+                'crsi': {
+                    'color': 'blue',
+                    'type': 'line'
+                }
+            },
+            'pump': {
+                'cti_1h': {
+                    'color': 'pink'
+                },
+                'safe_pump_24_10_1h': {
+                    'color': '#481110',
+                    'type': 'line'
+                },
+                'safe_pump_24_20_1h': {
+                    'color': '#481C0',
+                    'type': 'line'
+                },
+                'safe_pump_24_30_1h': {
+                    'color': '#481130',
+                    'type': 'line'
+                },
+                'safe_pump_24_40_1h': {
+                    'color': '#481140',
+                    'type': 'line'
+                },
+                'safe_pump_24_50_1h': {
+                    'color': '#481150',
+                    'type': 'line'
+                },
+                'safe_pump_24_60_1h': {
+                    'color': '#481160',
+                    'type': 'line'
+                },
+                'safe_pump_24_70_1h': {
+                    'color': '#481170',
+                    'type': 'line'
+                },
+                'safe_pump_24_80_1h': {
+                    'color': '#481180',
+                    'type': 'line'
+                },
+                'safe_pump_24_90_1h': {
+                    'color': '#481190',
+                    'type': 'line'
+                },
+                'safe_pump_24_100_1h': {
+                    'color': '#4811A0',
+                    'type': 'line'
+                },
+                'safe_pump_24_120_1h': {
+                    'color': '#4811C0',
+                    'type': 'line'
+                },
+                'safe_pump_36_10_1h': {
+                    'color': '#721110',
+                    'type': 'line'
+                },
+                'safe_pump_36_20_1h': {
+                    'color': '#721C0',
+                    'type': 'line'
+                },
+                'safe_pump_36_30_1h': {
+                    'color': '#721130',
+                    'type': 'line'
+                },
+                'safe_pump_36_40_1h': {
+                    'color': '#721140',
+                    'type': 'line'
+                },
+                'safe_pump_36_50_1h': {
+                    'color': '#721150',
+                    'type': 'line'
+                },
+                'safe_pump_36_60_1h': {
+                    'color': '#721160',
+                    'type': 'line'
+                },
+                'safe_pump_36_70_1h': {
+                    'color': '#721170',
+                    'type': 'line'
+                },
+                'safe_pump_36_80_1h': {
+                    'color': '#721180',
+                    'type': 'line'
+                },
+                'safe_pump_36_90_1h': {
+                    'color': '#721190',
+                    'type': 'line'
+                },
+                'safe_pump_36_100_1h': {
+                    'color': '#7211A0',
+                    'type': 'line'
+                },
+                'safe_pump_36_120_1h': {
+                    'color': '#7211C0',
+                    'type': 'line'
+                },
+                'safe_pump_48_10_1h': {
+                    'color': '#961110',
+                    'type': 'line'
+                },
+                'safe_pump_48_20_1h': {
+                    'color': '#961C0',
+                    'type': 'line'
+                },
+                'safe_pump_48_30_1h': {
+                    'color': '#961130',
+                    'type': 'line'
+                },
+                'safe_pump_48_40_1h': {
+                    'color': '#961140',
+                    'type': 'line'
+                },
+                'safe_pump_48_50_1h': {
+                    'color': '#961150',
+                    'type': 'line'
+                },
+                'safe_pump_48_60_1h': {
+                    'color': '#961160',
+                    'type': 'line'
+                },
+                'safe_pump_48_70_1h': {
+                    'color': '#961170',
+                    'type': 'line'
+                },
+                'safe_pump_48_80_1h': {
+                    'color': '#961180',
+                    'type': 'line'
+                },
+                'safe_pump_48_90_1h': {
+                    'color': '#961190',
+                    'type': 'line'
+                },
+                'safe_pump_48_100_1h': {
+                    'color': '#9611A0',
+                    'type': 'line'
+                },
+                'safe_pump_48_120_1h': {
+                    'color': '#9611C0',
+                    'type': 'line'
+                }
+            }
+        }
+    }
 
     @staticmethod
     def get_hold_trades_config_file():
@@ -1869,6 +2091,12 @@ class NostalgiaForInfinityNext(IStrategy):
         """
         if self.holdSupportEnabled and self.config['runmode'].value in ('live', 'dry_run'):
             self.load_hold_trades_config()
+
+            # Load custom_info for initial else save every loop start
+            if not self.custom_info:
+                self.custom_info = get_profit_target_by_pair()
+            else:
+                save_profit_target_by_pair(self.custom_info)
         return super().bot_loop_start(**kwargs)
 
     def get_ticker_indicator(self):
@@ -2328,6 +2556,20 @@ class NostalgiaForInfinityNext(IStrategy):
 
         return False, None
 
+
+    def mark_profit_target(self, pair: str, trade: "Trade", current_time: "datetime", current_rate: float, current_profit: float, last_candle, previous_candle_1) -> tuple:
+        # if self.profit_target_1_enable:
+        #     if (current_profit > 0) and (last_candle['zlema_4_lowKF'] > last_candle['lowKF']) and (previous_candle_1['zlema_4_lowKF'] < previous_candle_1['lowKF']) and (last_candle['cci'] > -100) and (last_candle['hrsi'] > 70):
+        #         return pair, "mark_profit_target_01"
+        return None, None
+
+    def sell_profit_target(self, pair: str, trade: "Trade", current_time: "datetime", current_rate: float, current_profit: float, last_candle, previous_candle_1, previous_rate, previous_sell_reason, previous_time_profit_reached) -> tuple:
+        # if self.profit_target_1_enable and previous_sell_reason == "mark_profit_target_01":
+        #     if (current_profit > 0) and (current_rate < (previous_rate - 0.005)):
+        #         return True, 'sell_profit_target_01'
+
+        return False, None
+
     def sell_quick_mode(self, current_profit: float, max_profit:float, last_candle, previous_candle_1) -> tuple:
         if (0.06 > current_profit > 0.02) and (last_candle['rsi_14'] > 80.0):
             return True, 'signal_profit_q_1'
@@ -2485,6 +2727,21 @@ class NostalgiaForInfinityNext(IStrategy):
         sell, signal_name = self.sell_r_4(current_profit, last_candle)
         if (sell) and (signal_name is not None):
             return signal_name + ' ( ' + buy_tag + ')'
+
+        # Profit Target Signal
+        # Check if pair exist on custom_info
+        if pair in self.custom_info.keys():
+            previous_rate = self.custom_info[pair]['rate']
+            previous_sell_reason = self.custom_info[pair]['sell_reason']
+            previous_time_profit_reached = datetime.fromisoformat(self.custom_info[pair]['time_profit_reached'])
+
+            sell, signal_name = self.sell_profit_target(pair, trade, current_time, current_rate, current_profit, last_candle, previous_candle_1, previous_rate, previous_sell_reason, previous_time_profit_reached)
+            if (sell) and (signal_name is not None):
+                return signal_name + ' ( ' + buy_tag + ')'
+
+        pair, mark_signal = self.mark_profit_target(pair, trade, current_time, current_rate, current_profit, last_candle, previous_candle_1)
+        if pair:
+            self._set_profit_target(pair, mark_signal, current_rate, current_time)
 
         # Sell signal 1
         if self.sell_condition_1_enable and (last_candle['rsi_14'] > self.sell_rsi_bb_1) and (last_candle['close'] > last_candle['bb20_2_upp']) and (previous_candle_1['close'] > previous_candle_1['bb20_2_upp']) and (previous_candle_2['close'] > previous_candle_2['bb20_2_upp']) and (previous_candle_3['close'] > previous_candle_3['bb20_2_upp']) and (previous_candle_4['close'] > previous_candle_4['bb20_2_upp']) and (previous_candle_5['close'] > previous_candle_5['bb20_2_upp']):
@@ -2678,6 +2935,11 @@ class NostalgiaForInfinityNext(IStrategy):
         # CTI
         informative_1h['cti'] = pta.cti(informative_1h["close"], length=20)
 
+        # CRSI (3, 2, 100)
+        crsi_closechange = informative_1h['close'] / informative_1h['close'].shift(1)
+        crsi_updown = np.where(crsi_closechange.gt(1), 1.0, np.where(crsi_closechange.lt(1), -1.0, 0.0))
+        informative_1h['crsi'] =  (ta.RSI(informative_1h['close'], timeperiod=3) + ta.RSI(crsi_updown, timeperiod=2) + ta.ROC(informative_1h['close'], 100)) / 3
+
         # Ichimoku
         ichi = ichimoku(informative_1h, conversion_line_period=20, base_line_periods=60, laggin_span=120, displacement=30)
         informative_1h['chikou_span'] = ichi['chikou_span']
@@ -2852,6 +3114,11 @@ class NostalgiaForInfinityNext(IStrategy):
 
         # hull
         dataframe['hull_75'] = hull(dataframe, 75)
+
+        # CRSI (3, 2, 100)
+        crsi_closechange = dataframe['close'] / dataframe['close'].shift(1)
+        crsi_updown = np.where(crsi_closechange.gt(1), 1.0, np.where(crsi_closechange.lt(1), -1.0, 0.0))
+        dataframe['crsi'] =  (ta.RSI(dataframe['close'], timeperiod=3) + ta.RSI(crsi_updown, timeperiod=2) + ta.ROC(dataframe['close'], 100)) / 3
 
         # zlema
         dataframe['zlema_68'] = zlema(dataframe, 68)
@@ -3195,9 +3462,10 @@ class NostalgiaForInfinityNext(IStrategy):
                     item_buy_logic.append(dataframe['ema_50_1h'] > dataframe['ema_100_1h'])
 
                     # Logic
-                    item_buy_logic.append(dataframe['close'] < dataframe['sma_30'] * self.buy_ma_offset_13)
-                    item_buy_logic.append(dataframe['cti'] < self.buy_cti_13)
-                    item_buy_logic.append(dataframe['ewo'] < self.buy_ewo_13)
+                    item_buy_logic.append(dataframe['close'] < dataframe['sma_30'] * self.buy_13_ma_offset)
+                    item_buy_logic.append(dataframe['cti'] < self.buy_13_cti)
+                    item_buy_logic.append(dataframe['ewo'] < self.buy_13_ewo)
+                    item_buy_logic.append(dataframe['r_480_1h'] < self.buy_13_r_1h)
 
                 # Condition #14
                 elif index == 14:
@@ -3238,10 +3506,12 @@ class NostalgiaForInfinityNext(IStrategy):
                     # Non-Standard protections
 
                     # Logic
-                    item_buy_logic.append(dataframe['close'] < dataframe['ema_20'] * self.buy_ma_offset_17)
-                    item_buy_logic.append(dataframe['ewo'] < self.buy_ewo_17)
-                    item_buy_logic.append(dataframe['cti'] < self.buy_cti_17)
-                    item_buy_logic.append(dataframe['volume'] < (dataframe['volume_mean_4'] * self.buy_volume_17))
+                    item_buy_logic.append(dataframe['close'] < dataframe['ema_20'] * self.buy_17_ma_offset)
+                    item_buy_logic.append(dataframe['ewo'] < self.buy_17_ewo)
+                    item_buy_logic.append(dataframe['cti'] < self.buy_17_cti)
+                    item_buy_logic.append(dataframe['cti_1h'] > self.buy_17_cti_1h)
+                    item_buy_logic.append(dataframe['r_480_1h'] < self.buy_17_r_1h)
+                    item_buy_logic.append(dataframe['volume'] < (dataframe['volume_mean_4'] * self.buy_17_volume))
 
                 # Condition #18
                 elif index == 18:
@@ -3414,18 +3684,17 @@ class NostalgiaForInfinityNext(IStrategy):
                     # Non-Standard protections
 
                     # Logic
-                    item_buy_logic.append(dataframe['moderi_32'])
-                    item_buy_logic.append(dataframe['moderi_64'])
-                    item_buy_logic.append(dataframe['moderi_96'])
-                    item_buy_logic.append(dataframe['cti'] < self.buy_32_cti)
                     item_buy_logic.append(dataframe['rsi_20'] < dataframe['rsi_20'].shift(1))
                     item_buy_logic.append(dataframe['rsi_4'] < self.buy_32_rsi)
                     item_buy_logic.append(dataframe['ema_20_1h'] > dataframe['ema_25_1h'])
-                    item_buy_logic.append((dataframe['open'] - dataframe['close']) / dataframe['close'] < self.buy_32_dip)
                     item_buy_logic.append(dataframe['close'] < (dataframe['sma_15'] * self.buy_32_ma_offset))
                     item_buy_logic.append(
                         ((dataframe['open'] < dataframe['ema_20_1h']) & (dataframe['low'] < dataframe['ema_20_1h'])) |
                         ((dataframe['open'] > dataframe['ema_20_1h']) & (dataframe['low'] > dataframe['ema_20_1h'])))
+                    item_buy_logic.append(dataframe['cti'] < self.buy_32_cti)
+                    item_buy_logic.append(dataframe['cti_1h'] > self.buy_32_cti_1h)
+                    item_buy_logic.append(dataframe['r_480_1h'] < self.buy_32_r_480_1h)
+                    item_buy_logic.append(dataframe['crsi_1h'] > self.buy_32_crsi_1h)
 
                 # Condition #33 - Quick mode buy
                 elif index == 33:
@@ -3581,7 +3850,7 @@ class NostalgiaForInfinityNext(IStrategy):
                     item_buy_logic.append(dataframe['close'] < (dataframe['ema_16'] * self.buy_44_ma_offset))
                     item_buy_logic.append(dataframe['ewo'] < self.buy_44_ewo)
                     item_buy_logic.append(dataframe['cti'] < self.buy_44_cti)
-                    item_buy_logic.append(dataframe['r_480_1h'] < self.buy_44_r_1h)
+                    item_buy_logic.append(dataframe['crsi_1h'] > self.buy_44_crsi_1h)
 
                 item_buy_logic.append(dataframe['volume'] > 0)
                 item_buy = reduce(lambda x, y: x & y, item_buy_logic)
@@ -3622,6 +3891,25 @@ class NostalgiaForInfinityNext(IStrategy):
         :return bool: When True is returned, then the sell-order is placed on the exchange.
             False aborts the process
         """
+        if self._should_hold_trade(trade, rate, sell_reason):
+            return False
+
+        self._remove_profit_target(pair)
+        return True
+
+    def _set_profit_target(self, pair: str, sell_reason: str, rate: float, current_time: "datetime"):
+        self.custom_info[pair] = {
+            "rate": rate,
+            "sell_reason": sell_reason,
+            "time_profit_reached": current_time.isoformat()
+        }
+
+    def _remove_profit_target(self, pair: str):
+        if pair in self.custom_info.keys():
+            self.custom_info.pop(pair)
+
+    def _should_hold_trade(self, trade: "Trade", rate: float, sell_reason: str) -> bool:
+
         # Just to be sure our hold data is loaded, should be a no-op call after the first bot loop
         if self.holdSupportEnabled and self.config['runmode'].value in ('live', 'dry_run'):
             self.load_hold_trades_config()
@@ -3632,11 +3920,11 @@ class NostalgiaForInfinityNext(IStrategy):
 
             if not self.hold_trades_cache.data:
                 # We have no pairs we want to hold until profit, sell
-                return True
+                return False
 
             if trade.id not in self.hold_trades_cache.data:
                 # This pair is not on the list to hold until profit, sell
-                return True
+                return False
 
             trade_profit_ratio = self.hold_trades_cache.data[trade.id]
             current_profit_ratio = trade.calc_profit_ratio(rate)
@@ -3647,15 +3935,15 @@ class NostalgiaForInfinityNext(IStrategy):
                     "Force selling %s even though the current profit of %s < %s",
                     trade, formatted_current_profit_ratio, formatted_profit_ratio
                 )
-                return True
+                return False
             elif current_profit_ratio >= trade_profit_ratio:
                 # This pair is on the list to hold, and we reached minimum profit, sell
-                return True
+                return False
 
             # This pair is on the list to hold, and we haven't reached minimum profit, hold
-            return False
-        else:
             return True
+        else:
+            return False
 
 # Elliot Wave Oscillator
 def ewo(dataframe, sma1_length=5, sma2_length=35):
@@ -4008,3 +4296,23 @@ class HoldsCache(Cache):
                     )
 
         return rdata
+
+
+
+# ------------------------------
+# Utility
+# ------------------------------
+USER_DATA_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_NFI_TARGET_PROFIT_BY_PAIR_PATH = os.path.join(
+    USER_DATA_DIR, "data-nfi-profit_target_by_pair.json")
+
+def get_profit_target_by_pair() -> Dict:
+    if not os.path.isfile(DATA_NFI_TARGET_PROFIT_BY_PAIR_PATH):
+        return {}
+    f = open(DATA_NFI_TARGET_PROFIT_BY_PAIR_PATH)
+    return json.load(f)
+
+def save_profit_target_by_pair(profit_target_by_pair: Dict):
+    file1 = open(DATA_NFI_TARGET_PROFIT_BY_PAIR_PATH, "w")
+    file1.write(json.dumps(profit_target_by_pair))
+    file1.close()
