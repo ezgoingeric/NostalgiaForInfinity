@@ -156,7 +156,5 @@ user_data/config-private-api-server2.json
 user_data/config-private-freqtrade2.json
 user_data/config-private-telegram2.json
 
-.docker-compose.yml
-
 user_data/strategies
 artifacts/

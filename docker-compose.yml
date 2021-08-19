@@ -28,10 +28,43 @@ services:
       --strategy NostalgiaForInfinityNext
       --config user_data/config1.json 
       --config user_data/config.live1.json
+      --db-url sqlite:///tradesv3.freqtrade.live1.sqlite
       --config user_data/config-private-api-server1.json 
       --config user_data/config-private-freqtrade1.json 
       --config user_data/config-private-telegram1.json
-      --db-url sqlite:///tradesv3.freqtrade1.live.sqlite
+
+  freqtrade2:
+    # image: freqtradeorg/freqtrade:stable
+    build:
+      context: .
+      dockerfile: "./docker/Dockerfile.custom"
+    # image: freqtradeorg/freqtrade:develop
+    # Use plotting image
+    # image: freqtradeorg/freqtrade:develop_plot
+    # Build step - only needed when additional dependencies are needed
+    # build:
+    #   context: .
+    #   dockerfile: "./docker/Dockerfile.custom"
+    restart: unless-stopped
+    container_name: freqtrade2
+    volumes:
+      - "./user_data:/freqtrade/user_data"
+    # Expose api on port 8081 (localhost only)
+    # Please read the https://www.freqtrade.io/en/latest/rest-api/ documentation
+    # before enabling this.
+    ports:
+      - "127.0.0.1:8082:8082"
+    # Default command used when running `docker compose up`
+    command: >
+      trade
+      --strategy NostalgiaForInfinityNext
+      --config user_data/config2.json 
+      --config user_data/config.live2.json
+      --db-url sqlite:///tradesv3.freqtrade.live2.sqlite
+      --config user_data/config-private-api-server2.json 
+      --config user_data/config-private-freqtrade2.json 
+      --config user_data/config-private-telegram2.json
+
   dryrun1:
     # image: freqtradeorg/freqtrade:stable
     build:
@@ -59,10 +92,43 @@ services:
       --strategy NostalgiaForInfinityNext
       --config user_data/config1.json 
       --config user_data/config.dryrun1.json
+      --db-url sqlite:///tradesv3.freqtrade.dryrun1.sqlite
       --config user_data/config-private-api-server1.json 
       --config user_data/config-private-freqtrade1.json 
       --config user_data/config-private-telegram1.json
-      --db-url sqlite:///tradesv3.freqtrade1.dryrun.sqlite
+
+  dryrun2:
+    # image: freqtradeorg/freqtrade:stable
+    build:
+      context: .
+      dockerfile: "./docker/Dockerfile.custom"
+    # image: freqtradeorg/freqtrade:develop
+    # Use plotting image
+    # image: freqtradeorg/freqtrade:develop_plot
+    # Build step - only needed when additional dependencies are needed
+    # build:
+    #   context: .
+    #   dockerfile: "./docker/Dockerfile.custom"
+    restart: unless-stopped
+    container_name: dryrun2
+    volumes:
+      - "./user_data:/freqtrade/user_data"
+    # Expose api on port 8081 (localhost only)
+    # Please read the https://www.freqtrade.io/en/latest/rest-api/ documentation
+    # before enabling this.
+    ports:
+      - "127.0.0.1:8082:8082"
+    # Default command used when running `docker compose up`
+    command: >
+      trade
+      --strategy Elliotv8
+      --config user_data/config2.json 
+      --config user_data/config.dryrun2.json
+      --db-url sqlite:///tradesv3.freqtrade.dryrun2.sqlite
+      --config user_data/config-private-api-server2.json 
+      --config user_data/config-private-freqtrade2.json 
+      --config user_data/config-private-telegram2.json
+
   backtesting1:
     build:
        context: .
@@ -74,11 +140,29 @@ services:
     command: >
       backtesting
       --strategy-list NostalgiaForInfinityNext
-      --timerange ${TIMERANGE:-20210601-20210701}
+      --timerange ${TIMERANGE:-20210101-20210701}
       --config user_data/data/pairlists.json
       --config user_data/data/${EXCHANGE:-kucoin}-usdt-static.json
       --max-open-trades ${MAX_OPEN_TRADES:-5}
       --stake-amount ${STAKE_AMOUNT:-unlimited}
+
+  backtesting2:
+    build:
+       context: .
+       dockerfile: "./docker/Dockerfile.custom"
+    container_name: freqtrade-backtesting2
+    volumes:
+      - "./user_data:/freqtrade/user_data"
+      - "./Elliotv8.py:/freqtrade/Elliotv8.py"
+    command: >
+      backtesting
+      --strategy-list Elliotv8
+      --timerange ${TIMERANGE:-20210101-20210701}
+      --config user_data/data/pairlists.json
+      --config user_data/data/${EXCHANGE:-kucoin}-usdt-static.json
+      --max-open-trades ${MAX_OPEN_TRADES:-3}
+      --stake-amount ${STAKE_AMOUNT:-unlimited}
+
   download-data:
     image: freqtradeorg/freqtrade:develop
     container_name: freqtrade-download-data
@@ -91,6 +175,7 @@ services:
       --datadir user_data/data/${EXCHANGE:-kucoin}
       --config user_data/data/pairlists.json
       --config user_data/data/${EXCHANGE:-kucoin}-usdt-static.json
+
   tests:
     build:
        context: .
