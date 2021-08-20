@@ -134,6 +134,16 @@ user_data/data/*.json
 # IntelliJ
 .idea
 
+# Freqtrade rules
+config*.json
+*.sqlite
+logfile.txt
+user_data/*
+user_data/notebooks/*
+freqtrade-plot.html
+freqtrade-profit-plot.html
+freqtrade/rpc/api_server/ui/*
+
 user_data/data
 user_data/backtest_results
 user_data/hyperopt_results
@@ -158,3 +168,6 @@ user_data/config-private-telegram2.json
 
 user_data/strategies
 artifacts/
+
+#exceptions
+!*.gitkeep
