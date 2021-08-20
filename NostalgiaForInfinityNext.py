@@ -5,7 +5,6 @@ import rapidjson
 import freqtrade.vendor.qtpylib.indicators as qtpylib
 import numpy as np
 import talib.abstract as ta
-from freqtrade.misc import json_load, file_dump_json
 from freqtrade.strategy.interface import IStrategy
 from freqtrade.strategy import merge_informative_pair, timeframe_to_minutes
 from freqtrade.exchange import timeframe_to_prev_date
@@ -17,8 +16,7 @@ from freqtrade.persistence import Trade
 from datetime import datetime, timedelta
 from technical.util import resample_to_interval, resampled_merge
 from technical.indicators import zema, VIDYA, ichimoku
-import os
-import json
+import time
 
 log = logging.getLogger(__name__)
 
@@ -26,7 +24,11 @@ log = logging.getLogger(__name__)
 try:
     import pandas_ta as pta
 except ImportError:
-    log.error("IMPORTANT - please install the pandas_ta python module which is needed for this strategy. If you're running Docker, add RUN pip install pandas_ta to your Dockerfile, otherwise run: pip install pandas_ta")
+    log.error(
+        "IMPORTANT - please install the pandas_ta python module which is needed for this strategy. "
+        "If you're running Docker, add RUN pip install pandas_ta to your Dockerfile, otherwise run: "
+        "pip install pandas_ta"
+    )
 else:
     log.info("pandas_ta successfully imported")
 
@@ -53,8 +55,9 @@ else:
 ###########################################################################################################
 ##               HOLD SUPPORT                                                                            ##
 ##                                                                                                       ##
+## -------- SPECIFIC TRADES ---------------------------------------------------------------------------- ##
 ##   In case you want to have SOME of the trades to only be sold when on profit, add a file named        ##
-##   "hold-trades.json" in the same directory as this strategy.                                          ##
+##   "nfi-hold-trades.json" in the user_data directory                                                   ##
 ##                                                                                                       ##
 ##   The contents should be similar to:                                                                  ##
 ##                                                                                                       ##
@@ -69,8 +72,18 @@ else:
 ##      output of the telegram status command.                                                           ##
 ##    * Regardless of the defined profit ratio(s), the strategy MUST still produce a SELL signal for the ##
 ##      HOLD support logic to run                                                                        ##
-##    * This feature can be completely disabled with the holdSupportEnabled parameter                    ##
+##    * This feature can be completely disabled with the holdSupportEnabled class attribute              ##
 ##                                                                                                       ##
+## -------- SPECIFIC PAIRS ----------------------------------------------------------------------------- ##
+##   In case you want to have some pairs to always be on held until a specific profit, using the same    ##
+##   "hold-trades.json" file add something like:                                                         ##
+##                                                                                                       ##
+##   {"trade_pairs": {"BTC/USDT": 0.001, "ETH/USDT": -0.005}}                                            ##
+##                                                                                                       ##
+## -------- SPECIFIC TRADES AND PAIRS ------------------------------------------------------------------ ##
+##   It is also valid to include specific trades and pairs on the holds file, for example:               ##
+##                                                                                                       ##
+##   {"trade_ids": {"1": 0.001}, "trade_pairs": {"BTC/USDT": 0.001}}                                     ##
 ###########################################################################################################
 ##               DONATIONS                                                                               ##
 ##                                                                                                       ##
@@ -121,6 +134,9 @@ class NostalgiaForInfinityNext(IStrategy):
     # Exchange Downtime protection
     has_downtime_protection = False
 
+    # Report populate_indicators loop time per pair
+    has_loop_perf_logging = False
+
     # Do you want to use the hold feature? (with hold-trades.json)
     holdSupportEnabled = True
 
@@ -134,9 +150,6 @@ class NostalgiaForInfinityNext(IStrategy):
 
     # Number of candles the strategy requires before producing valid signals
     startup_candle_count: int = 480
-
-    # Initialize custom_info
-    custom_info = {}
 
     # Optional order type mapping.
     order_types = {
@@ -699,7 +712,7 @@ class NostalgiaForInfinityNext(IStrategy):
             "safe_dips"                 : True,
             "safe_dips_type"            : "20",
             "safe_pump"                 : False,
-            "safe_pump_type"            : "50",
+            "safe_pump_type"            : "10",
             "safe_pump_period"          : "24",
             "btc_1h_not_downtrend"      : False
         },
@@ -1843,8 +1856,6 @@ class NostalgiaForInfinityNext(IStrategy):
     profit_target_1_enable = False
     #############################################################
 
-    hold_trades_cache = None
-
     plot_config = {
         'main_plot': {
             'ema_12_1h': {
@@ -2052,31 +2063,43 @@ class NostalgiaForInfinityNext(IStrategy):
         }
     }
 
-    @staticmethod
-    def get_hold_trades_config_file():
+    #############################################################
+    # CACHES
+
+    hold_trades_cache = None
+    target_profit_cache = None
+    #############################################################
+
+    def get_hold_trades_config_file(self):
+        proper_holds_file_path = self.config["user_data_dir"].resolve() / "nfi-hold-trades.json"
+        if proper_holds_file_path.is_file():
+            return proper_holds_file_path
+
         strat_file_path = pathlib.Path(__file__)
         hold_trades_config_file_resolve = strat_file_path.resolve().parent / "hold-trades.json"
         if hold_trades_config_file_resolve.is_file():
+            log.warning(
+                "Please move %s to %s which is now the expected path for the holds file",
+                hold_trades_config_file_resolve,
+                proper_holds_file_path,
+            )
             return hold_trades_config_file_resolve
 
         # The resolved path does not exist, is it a symlink?
         hold_trades_config_file_absolute = strat_file_path.absolute().parent / "hold-trades.json"
         if hold_trades_config_file_absolute.is_file():
+            log.warning(
+                "Please move %s to %s which is now the expected path for the holds file",
+                hold_trades_config_file_absolute,
+                proper_holds_file_path,
+            )
             return hold_trades_config_file_absolute
-
-        if hold_trades_config_file_resolve != hold_trades_config_file_absolute:
-            looked_in = f"'{hold_trades_config_file_resolve}' and '{hold_trades_config_file_absolute}'"
-        else:
-            looked_in = f"'{hold_trades_config_file_resolve}'"
-        log.warning(
-            "The 'hold-trades.json' file was not found. Looked in %s. HOLD support disabled.",
-            looked_in
-        )
 
     def load_hold_trades_config(self):
         if self.hold_trades_cache is None:
-            hold_trades_config_file = NostalgiaForInfinityNext.get_hold_trades_config_file()
+            hold_trades_config_file = self.get_hold_trades_config_file()
             if hold_trades_config_file:
+                log.warning("Loading hold support data from %s", hold_trades_config_file)
                 self.hold_trades_cache = HoldsCache(hold_trades_config_file)
 
         if self.hold_trades_cache:
@@ -2089,14 +2112,20 @@ class NostalgiaForInfinityNext(IStrategy):
         (e.g. gather some remote resource for comparison)
         :param **kwargs: Ensure to keep this here so updates to this won't break your strategy.
         """
-        if self.holdSupportEnabled and self.config['runmode'].value in ('live', 'dry_run'):
+        if self.config["runmode"].value not in ("live", "dry_run"):
+            return super().bot_loop_start(**kwargs)
+
+        if self.target_profit_cache is None:
+            self.target_profit_cache = Cache(
+                self.config["user_data_dir"] / "data-nfi-profit_target_by_pair.json"
+            )
+
+        # If the cached data hasn't changed, it's a no-op
+        self.target_profit_cache.save()
+
+        if self.holdSupportEnabled:
             self.load_hold_trades_config()
 
-            # Load custom_info for initial else save every loop start
-            if not self.custom_info:
-                self.custom_info = get_profit_target_by_pair()
-            else:
-                save_profit_target_by_pair(self.custom_info)
         return super().bot_loop_start(**kwargs)
 
     def get_ticker_indicator(self):
@@ -2518,19 +2547,19 @@ class NostalgiaForInfinityNext(IStrategy):
 
     def sell_r_4(self, current_profit: float, last_candle) -> tuple:
         if (0.02 > current_profit >= 0.012):
-            if (last_candle['r_480'] > -2.0) and (last_candle['rsi_14'] > 68.0) and (last_candle['cti'] > 0.9):
+            if (last_candle['r_480'] > -2.0) and (last_candle['rsi_14'] > 78.0) and (last_candle['cti'] > 0.9):
                 return True, 'signal_profit_w_4_1'
         elif (0.03 > current_profit >= 0.02):
-            if (last_candle['r_480'] > -2.5) and (last_candle['rsi_14'] > 68.0) and (last_candle['cti'] > 0.9):
+            if (last_candle['r_480'] > -2.5) and (last_candle['rsi_14'] > 78.0) and (last_candle['cti'] > 0.9):
                 return True, 'signal_profit_w_4_2'
         elif (0.04 > current_profit >= 0.03):
-            if (last_candle['r_480'] > -3.0) and (last_candle['rsi_14'] > 68.0) and (last_candle['cti'] > 0.9):
+            if (last_candle['r_480'] > -3.0) and (last_candle['rsi_14'] > 78.0) and (last_candle['cti'] > 0.9):
                 return True, 'signal_profit_w_4_3'
         elif (0.05 > current_profit >= 0.04):
-            if (last_candle['r_480'] > -3.5) and (last_candle['rsi_14'] > 68.0) and (last_candle['cti'] > 0.9):
+            if (last_candle['r_480'] > -3.5) and (last_candle['rsi_14'] > 78.0) and (last_candle['cti'] > 0.9):
                 return True, 'signal_profit_w_4_4'
         elif (0.06 > current_profit >= 0.05):
-            if (last_candle['r_480'] > -4.0) and (last_candle['rsi_14'] > 68.0) and (last_candle['cti'] > 0.9):
+            if (last_candle['r_480'] > -4.0) and (last_candle['rsi_14'] > 78.0) and (last_candle['cti'] > 0.9):
                 return True, 'signal_profit_w_4_5'
         elif (0.07 > current_profit >= 0.06):
             if (last_candle['r_480'] > -4.5) and (last_candle['rsi_14'] > 79.0) and (last_candle['cti'] > 0.9):
@@ -2729,15 +2758,15 @@ class NostalgiaForInfinityNext(IStrategy):
             return signal_name + ' ( ' + buy_tag + ')'
 
         # Profit Target Signal
-        # Check if pair exist on custom_info
-        if pair in self.custom_info.keys():
-            previous_rate = self.custom_info[pair]['rate']
-            previous_sell_reason = self.custom_info[pair]['sell_reason']
-            previous_time_profit_reached = datetime.fromisoformat(self.custom_info[pair]['time_profit_reached'])
+        # Check if pair exist on target_profit_cache
+        if self.target_profit_cache is not None and pair in self.target_profit_cache.data:
+            previous_rate = self.target_profit_cache.data[pair]['rate']
+            previous_sell_reason = self.target_profit_cache.data[pair]['sell_reason']
+            previous_time_profit_reached = datetime.fromisoformat(self.target_profit_cache.data[pair]['time_profit_reached'])
 
             sell, signal_name = self.sell_profit_target(pair, trade, current_time, current_rate, current_profit, last_candle, previous_candle_1, previous_rate, previous_sell_reason, previous_time_profit_reached)
-            if (sell) and (signal_name is not None):
-                return signal_name + ' ( ' + buy_tag + ')'
+            if sell and signal_name is not None:
+                return f"{signal_name} ( {buy_tag} )"
 
         pair, mark_signal = self.mark_profit_target(pair, trade, current_time, current_rate, current_profit, last_candle, previous_candle_1)
         if pair:
@@ -2893,8 +2922,8 @@ class NostalgiaForInfinityNext(IStrategy):
         pairs = self.dp.current_whitelist()
         # Assign tf to each pair so they can be downloaded and cached for strategy.
         informative_pairs = [(pair, self.info_timeframe) for pair in pairs]
-        informative_pairs.append(('BTC/USDT', self.timeframe))
-        informative_pairs.append(('BTC/USDT', self.info_timeframe))
+        informative_pairs.append((f"BTC/{self.config['stake_currency']}", self.timeframe))
+        informative_pairs.append((f"BTC/{self.config['stake_currency']}", self.info_timeframe))
         return informative_pairs
 
     def informative_1h_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -3231,19 +3260,20 @@ class NostalgiaForInfinityNext(IStrategy):
         return dataframe
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        tik = time.perf_counter()
         '''
         --> BTC informative (5m/1h)
         ___________________________________________________________________________________________
         '''
         if self.has_BTC_base_tf:
-            btc_base_tf = self.dp.get_pair_dataframe("BTC/USDT", self.timeframe)
+            btc_base_tf = self.dp.get_pair_dataframe(f"BTC/{self.config['stake_currency']}", self.timeframe)
             btc_base_tf = self.base_tf_btc_indicators(btc_base_tf, metadata)
             dataframe = merge_informative_pair(dataframe, btc_base_tf, self.timeframe, self.timeframe, ffill=True)
             drop_columns = [(s + "_" + self.timeframe) for s in ['date', 'open', 'high', 'low', 'close', 'volume']]
             dataframe.drop(columns=dataframe.columns.intersection(drop_columns), inplace=True)
 
         if self.has_BTC_info_tf:
-            btc_info_tf = self.dp.get_pair_dataframe("BTC/USDT", self.info_timeframe)
+            btc_info_tf = self.dp.get_pair_dataframe(f"BTC/{self.config['stake_currency']}", self.info_timeframe)
             btc_info_tf = self.info_tf_btc_indicators(btc_info_tf, metadata)
             dataframe = merge_informative_pair(dataframe, btc_info_tf, self.timeframe, self.info_timeframe, ffill=True)
             drop_columns = [(s + "_" + self.info_timeframe) for s in ['date', 'open', 'high', 'low', 'close', 'volume']]
@@ -3278,6 +3308,11 @@ class NostalgiaForInfinityNext(IStrategy):
         ___________________________________________________________________________________________
         '''
         dataframe = self.normal_tf_indicators(dataframe, metadata)
+
+        tok = time.perf_counter()
+        if self.has_loop_perf_logging:
+            log.info(f"Populate indicators for pair: {metadata['pair']} took {tok - tik:0.4f} seconds.")
+
         return dataframe
 
     def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -3898,35 +3933,43 @@ class NostalgiaForInfinityNext(IStrategy):
         return True
 
     def _set_profit_target(self, pair: str, sell_reason: str, rate: float, current_time: "datetime"):
-        self.custom_info[pair] = {
+        self.target_profit_cache.data[pair] = {
             "rate": rate,
             "sell_reason": sell_reason,
             "time_profit_reached": current_time.isoformat()
         }
+        self.target_profit_cache.save()
 
     def _remove_profit_target(self, pair: str):
-        if pair in self.custom_info.keys():
-            self.custom_info.pop(pair)
+        if self.target_profit_cache is not None:
+            self.target_profit_cache.data.pop(pair, None)
+            self.target_profit_cache.save()
 
     def _should_hold_trade(self, trade: "Trade", rate: float, sell_reason: str) -> bool:
+        if self.config['runmode'].value not in ('live', 'dry_run'):
+            return False
+
+        if not self.holdSupportEnabled:
+            return False
 
         # Just to be sure our hold data is loaded, should be a no-op call after the first bot loop
-        if self.holdSupportEnabled and self.config['runmode'].value in ('live', 'dry_run'):
-            self.load_hold_trades_config()
+        self.load_hold_trades_config()
 
-            if not self.hold_trades_cache:
-                # Cache hasn't been setup, likely because the corresponding file does not exist, sell
-                return True
+        if not self.hold_trades_cache:
+            # Cache hasn't been setup, likely because the corresponding file does not exist, sell
+            return False
 
-            if not self.hold_trades_cache.data:
-                # We have no pairs we want to hold until profit, sell
-                return False
+        if not self.hold_trades_cache.data:
+            # We have no pairs we want to hold until profit, sell
+            return False
 
-            if trade.id not in self.hold_trades_cache.data:
+        trade_ids: dict = self.hold_trades_cache.data.get("trade_ids")
+        if trade_ids:
+            if trade.id not in trade_ids:
                 # This pair is not on the list to hold until profit, sell
                 return False
 
-            trade_profit_ratio = self.hold_trades_cache.data[trade.id]
+            trade_profit_ratio = trade_ids[trade.id]
             current_profit_ratio = trade.calc_profit_ratio(rate)
             if sell_reason == "force_sell":
                 formatted_profit_ratio = "{}%".format(trade_profit_ratio * 100)
@@ -3942,8 +3985,31 @@ class NostalgiaForInfinityNext(IStrategy):
 
             # This pair is on the list to hold, and we haven't reached minimum profit, hold
             return True
-        else:
-            return False
+
+        trade_pairs: dict = self.hold_trades_cache.data.get("trade_pairs")
+        if trade_pairs:
+            if trade.pair not in trade_pairs:
+                # This pair is not on the list to hold until profit, sell
+                return False
+
+            trade_profit_ratio = trade_pairs[trade.pair]
+            current_profit_ratio = trade.calc_profit_ratio(rate)
+            if sell_reason == "force_sell":
+                formatted_profit_ratio = "{}%".format(trade_profit_ratio * 100)
+                formatted_current_profit_ratio = "{}%".format(current_profit_ratio * 100)
+                log.warning(
+                    "Force selling %s even though the current profit of %s < %s",
+                    trade, formatted_current_profit_ratio, formatted_profit_ratio
+                )
+                return False
+            elif current_profit_ratio >= trade_profit_ratio:
+                # This pair is on the list to hold, and we reached minimum profit, sell
+                return False
+
+            # This pair is on the list to hold, and we haven't reached minimum profit, hold
+            return True
+        # By default, no hold should be done
+        return False
 
 # Elliot Wave Oscillator
 def ewo(dataframe, sma1_length=5, sma2_length=35):
@@ -4183,6 +4249,14 @@ class Cache:
         except FileNotFoundError:
             pass
 
+    @staticmethod
+    def rapidjson_load_kwargs():
+        return {"number_mode": rapidjson.NM_NATIVE}
+
+    @staticmethod
+    def rapidjson_dump_kwargs():
+        return {"number_mode": rapidjson.NM_NATIVE}
+
     def load(self):
         if not self._mtime or self.path.stat().st_mtime_ns != self._mtime:
             self._load()
@@ -4198,7 +4272,10 @@ class Cache:
         # This method only exists to simplify unit testing
         with self.path.open("r") as rfh:
             try:
-                data = json_load(rfh)
+                data = rapidjson.load(
+                    rfh,
+                    **self.rapidjson_load_kwargs()
+                )
             except rapidjson.JSONDecodeError as exc:
                 log.error("Failed to load JSON from %s: %s", self.path, exc)
             else:
@@ -4208,111 +4285,163 @@ class Cache:
 
     def _save(self):
         # This method only exists to simplify unit testing
-        file_dump_json(self.path, self.data, is_zip=False, log=True)
+        rapidjson.dump(
+            self.data,
+            self.path.open("w"),
+            **self.rapidjson_dump_kwargs()
+        )
         self._mtime = self.path.stat().st_mtime
         self._previous_data = copy.deepcopy(self.data)
 
 
 class HoldsCache(Cache):
 
+    @staticmethod
+    def rapidjson_load_kwargs():
+        return {
+            "number_mode": rapidjson.NM_NATIVE,
+            "object_hook": HoldsCache._object_hook,
+        }
+
+    @staticmethod
+    def rapidjson_dump_kwargs():
+        return {
+            "number_mode": rapidjson.NM_NATIVE,
+            "mapping_mode": rapidjson.MM_COERCE_KEYS_TO_STRINGS,
+        }
+
     def save(self):
         raise RuntimeError("The holds cache does not allow programatical save")
 
     def process_loaded_data(self, data):
         trade_ids = data.get("trade_ids")
+        trade_pairs = data.get("trade_pairs")
 
-        if not trade_ids:
-            return {}
+        if not trade_ids and not trade_pairs:
+            return data
 
-        rdata = {}
-        open_trades = {
-            trade.id: trade for trade in Trade.get_trades_proxy(is_open=True)
-        }
+        open_trades = {}
+        for trade in Trade.get_trades_proxy(is_open=True):
+            open_trades[trade.id] = open_trades[trade.pair] = trade
 
-        if isinstance(trade_ids, dict):
-            # New syntax
-            for trade_id, profit_ratio in trade_ids.items():
-                try:
-                    trade_id = int(trade_id)
-                except ValueError:
-                    log.error(
-                        "The trade_id(%s) defined under 'trade_ids' in %s is not an integer",
-                        trade_id, self.path
-                    )
-                    continue
-                if not isinstance(profit_ratio, float):
-                    log.error(
-                        "The 'profit_ratio' config value(%s) for trade_id %s in %s is not a float",
-                        profit_ratio,
-                        trade_id,
-                        self.path
-                    )
-                if trade_id in open_trades:
-                    formatted_profit_ratio = "{}%".format(profit_ratio * 100)
-                    log.warning(
-                        "The trade %s is configured to HOLD until the profit ratio of %s is met",
-                        open_trades[trade_id],
-                        formatted_profit_ratio
-                    )
-                    rdata[trade_id] = profit_ratio
-                else:
-                    log.warning(
-                        "The trade_id(%s) is no longer open. Please remove it from 'trade_ids' in %s",
-                        trade_id,
-                        self.path
-                    )
-        else:
-            # Initial Syntax
-            profit_ratio = data.get("profit_ratio")
-            if profit_ratio:
-                if not isinstance(profit_ratio, float):
-                    log.error(
-                        "The 'profit_ratio' config value(%s) in %s is not a float",
-                        profit_ratio,
-                        self.path
-                    )
+        r_trade_ids = {}
+        if trade_ids:
+            if isinstance(trade_ids, dict):
+                # New syntax
+                for trade_id, profit_ratio in trade_ids.items():
+                    if not isinstance(trade_id, int):
+                        log.error(
+                            "The trade_id(%s) defined under 'trade_ids' in %s is not an integer",
+                            trade_id, self.path
+                        )
+                        continue
+                    if not isinstance(profit_ratio, float):
+                        log.error(
+                            "The 'profit_ratio' config value(%s) for trade_id %s in %s is not a float",
+                            profit_ratio,
+                            trade_id,
+                            self.path
+                        )
+                    if trade_id in open_trades:
+                        formatted_profit_ratio = "{}%".format(profit_ratio * 100)
+                        log.warning(
+                            "The trade %s is configured to HOLD until the profit ratio of %s is met",
+                            open_trades[trade_id],
+                            formatted_profit_ratio
+                        )
+                        r_trade_ids[trade_id] = profit_ratio
+                    else:
+                        log.warning(
+                            "The trade_id(%s) is no longer open. Please remove it from 'trade_ids' in %s",
+                            trade_id,
+                            self.path
+                        )
             else:
-                profit_ratio = 0.005
-            formatted_profit_ratio = "{}%".format(profit_ratio * 100)
-            for trade_id in trade_ids:
-                if not isinstance(trade_id, int):
+                # Initial Syntax
+                profit_ratio = data.get("profit_ratio")
+                if profit_ratio:
+                    if not isinstance(profit_ratio, float):
+                        log.error(
+                            "The 'profit_ratio' config value(%s) in %s is not a float",
+                            profit_ratio,
+                            self.path
+                        )
+                else:
+                    profit_ratio = 0.005
+                formatted_profit_ratio = "{}%".format(profit_ratio * 100)
+                for trade_id in trade_ids:
+                    if not isinstance(trade_id, int):
+                        log.error(
+                            "The trade_id(%s) defined under 'trade_ids' in %s is not an integer",
+                            trade_id, self.path
+                        )
+                        continue
+                    if trade_id in open_trades:
+                        log.warning(
+                            "The trade %s is configured to HOLD until the profit ratio of %s is met",
+                            open_trades[trade_id],
+                            formatted_profit_ratio
+                        )
+                        r_trade_ids[trade_id] = profit_ratio
+                    else:
+                        log.warning(
+                            "The trade_id(%s) is no longer open. Please remove it from 'trade_ids' in %s",
+                            trade_id,
+                            self.path
+                        )
+
+        r_trade_pairs = {}
+        if trade_pairs:
+            for trade_pair, profit_ratio in trade_pairs.items():
+                if not isinstance(trade_pair, str):
                     log.error(
-                        "The trade_id(%s) defined under 'trade_ids' in %s is not an integer",
-                        trade_id, self.path
+                        "The trade_pair(%s) defined under 'trade_pairs' in %s is not a string",
+                        trade_pair, self.path
                     )
                     continue
-                if trade_id in open_trades:
-                    log.warning(
-                        "The trade %s is configured to HOLD until the profit ratio of %s is met",
-                        open_trades[trade_id],
-                        formatted_profit_ratio
+                if "/" not in trade_pair:
+                    log.error(
+                        "The trade_pair(%s) defined under 'trade_pairs' in %s does not look like "
+                        "a valid '<TOKEN_NAME>/<STAKE_CURRENCY>' formatted pair.",
+                        trade_pair, self.path
                     )
-                    rdata[trade_id] = profit_ratio
-                else:
-                    log.warning(
-                        "The trade_id(%s) is no longer open. Please remove it from 'trade_ids' in %s",
-                        trade_id,
+                    continue
+                if not isinstance(profit_ratio, float):
+                    log.error(
+                        "The 'profit_ratio' config value(%s) for trade_pair %s in %s is not a float",
+                        profit_ratio,
+                        trade_pair,
                         self.path
                     )
+                formatted_profit_ratio = "{}%".format(profit_ratio * 100)
+                if trade_pair in open_trades:
+                    log.warning(
+                        "The trade %s is configured to HOLD until the profit ratio of %s is met",
+                        open_trades[trade_pair],
+                        formatted_profit_ratio
+                    )
+                else:
+                    log.warning(
+                        "The trade pair %s is configured to HOLD until the profit ratio of %s is met",
+                        trade_pair,
+                        formatted_profit_ratio
+                    )
+                r_trade_pairs[trade_pair] = profit_ratio
 
-        return rdata
+        r_data = {}
+        if r_trade_ids:
+            r_data["trade_ids"] = r_trade_ids
+        if r_trade_pairs:
+            r_data["trade_pairs"] = r_trade_pairs
+        return r_data
 
-
-
-# ------------------------------
-# Utility
-# ------------------------------
-USER_DATA_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_NFI_TARGET_PROFIT_BY_PAIR_PATH = os.path.join(
-    USER_DATA_DIR, "data-nfi-profit_target_by_pair.json")
-
-def get_profit_target_by_pair() -> Dict:
-    if not os.path.isfile(DATA_NFI_TARGET_PROFIT_BY_PAIR_PATH):
-        return {}
-    f = open(DATA_NFI_TARGET_PROFIT_BY_PAIR_PATH)
-    return json.load(f)
-
-def save_profit_target_by_pair(profit_target_by_pair: Dict):
-    file1 = open(DATA_NFI_TARGET_PROFIT_BY_PAIR_PATH, "w")
-    file1.write(json.dumps(profit_target_by_pair))
-    file1.close()
+    @staticmethod
+    def _object_hook(data):
+        _data = {}
+        for key, value in data.items():
+            try:
+                key = int(key)
+            except ValueError:
+                pass
+            _data[key] = value
+        return _data
