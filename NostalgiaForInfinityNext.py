@@ -1517,7 +1517,7 @@ class NostalgiaForInfinityNext(IStrategy):
     buy_37_cti = -0.7
 
     buy_38_ma_offset = 0.98
-    buy_38_ewo = -5.2
+    buy_38_ewo = -6.5
     buy_38_cti = -0.96
 
     buy_39_cti = -0.77
@@ -1857,207 +1857,61 @@ class NostalgiaForInfinityNext(IStrategy):
 
     plot_config = {
         'main_plot': {
-            'ema_12_1h': {
-                'color': 'rgba(200,200,100,0.4)',
-                'type': 'line'
-            },
-            'ema_15_1h': {
-                'color': 'rgba(200,180,100,0.4)',
-                'type': 'line'
-            },
-            'ema_20_1h': {
-                'color': 'rgba(200,160,100,0.4)',
-                'type': 'line'
-            },
-            'ema_25_1h': {
-                'color': 'rgba(200,140,100,0.4)',
-                'type': 'line'
-            },
-            'ema_26_1h': {
-                'color': 'rgba(200,120,100,0.4)',
-                'type': 'line'
-            },
-            'ema_35_1h': {
-                'color': 'rgba(200,100,100,0.4)',
-                'type': 'line'
-            },
-            'ema_50_1h': {
-                'color': 'rgba(200,80,100,0.4)',
-                'type': 'line'
-            },
-            'ema_100_1h': {
-                'color': 'rgba(200,60,100,0.4)',
-                'type': 'line'
-            },
-            'ema_200_1h': {
-                'color': 'rgba(200,40,100,0.4)',
-                'type': 'line'
-            },
-            'sma_200_1h': {
-                'color': 'rgba(150,20,100,0.4)',
-                'type': 'line'
-            },
-            'pm': {
-                'color': 'rgba(100,20,100,0.5)',
-                'type': 'line'
-            }
+            'ema_12_1h': { 'color': 'rgba(200,200,100,0.4)' },
+            'ema_15_1h': { 'color': 'rgba(200,180,100,0.4)' },
+            'ema_20_1h': { 'color': 'rgba(200,160,100,0.4)' },
+            'ema_25_1h': { 'color': 'rgba(200,140,100,0.4)' },
+            'ema_26_1h': { 'color': 'rgba(200,120,100,0.4)' },
+            'ema_35_1h': { 'color': 'rgba(200,100,100,0.4)' },
+            'ema_50_1h': { 'color': 'rgba(200,80,100,0.4)' },
+            'ema_100_1h': { 'color': 'rgba(200,60,100,0.4)' },
+            'ema_200_1h': { 'color': 'rgba(200,40,100,0.4)' },
+            'sma_200_1h': { 'color': 'rgba(150,20,100,0.4)' },
+            'pm': { 'color': 'rgba(100,20,100,0.5)' }
         },
         'subplots': {
-            'buy tag': {
-                'buy_tag': {'color': 'green'}
-            },
+            'buy tag': { 'buy_tag': {'color': 'green'} },
             'RSI/BTC': {
-                'btc_not_downtrend_1h': {
-                    'color': 'yellow'
-                },
-                'btc_rsi_14_1h': {
-                    'color': 'green'
-                },
-                'rsi_14_1h': {
-                    'color': '#f41cd1',
-                    'type': 'line'
-                },
-                'crsi': {
-                    'color': 'blue',
-                    'type': 'line'
-                }
+                'btc_not_downtrend_1h': { 'color': 'yellow' },
+                'btc_rsi_14_1h': { 'color': 'green' },
+                'rsi_14_1h': { 'color': '#f41cd1' },
+                'crsi': {'color': 'blue' }
             },
             'pump': {
-                'cti_1h': {
-                    'color': 'pink'
-                },
-                'safe_pump_24_10_1h': {
-                    'color': '#481110',
-                    'type': 'line'
-                },
-                'safe_pump_24_20_1h': {
-                    'color': '#481C0',
-                    'type': 'line'
-                },
-                'safe_pump_24_30_1h': {
-                    'color': '#481130',
-                    'type': 'line'
-                },
-                'safe_pump_24_40_1h': {
-                    'color': '#481140',
-                    'type': 'line'
-                },
-                'safe_pump_24_50_1h': {
-                    'color': '#481150',
-                    'type': 'line'
-                },
-                'safe_pump_24_60_1h': {
-                    'color': '#481160',
-                    'type': 'line'
-                },
-                'safe_pump_24_70_1h': {
-                    'color': '#481170',
-                    'type': 'line'
-                },
-                'safe_pump_24_80_1h': {
-                    'color': '#481180',
-                    'type': 'line'
-                },
-                'safe_pump_24_90_1h': {
-                    'color': '#481190',
-                    'type': 'line'
-                },
-                'safe_pump_24_100_1h': {
-                    'color': '#4811A0',
-                    'type': 'line'
-                },
-                'safe_pump_24_120_1h': {
-                    'color': '#4811C0',
-                    'type': 'line'
-                },
-                'safe_pump_36_10_1h': {
-                    'color': '#721110',
-                    'type': 'line'
-                },
-                'safe_pump_36_20_1h': {
-                    'color': '#721C0',
-                    'type': 'line'
-                },
-                'safe_pump_36_30_1h': {
-                    'color': '#721130',
-                    'type': 'line'
-                },
-                'safe_pump_36_40_1h': {
-                    'color': '#721140',
-                    'type': 'line'
-                },
-                'safe_pump_36_50_1h': {
-                    'color': '#721150',
-                    'type': 'line'
-                },
-                'safe_pump_36_60_1h': {
-                    'color': '#721160',
-                    'type': 'line'
-                },
-                'safe_pump_36_70_1h': {
-                    'color': '#721170',
-                    'type': 'line'
-                },
-                'safe_pump_36_80_1h': {
-                    'color': '#721180',
-                    'type': 'line'
-                },
-                'safe_pump_36_90_1h': {
-                    'color': '#721190',
-                    'type': 'line'
-                },
-                'safe_pump_36_100_1h': {
-                    'color': '#7211A0',
-                    'type': 'line'
-                },
-                'safe_pump_36_120_1h': {
-                    'color': '#7211C0',
-                    'type': 'line'
-                },
-                'safe_pump_48_10_1h': {
-                    'color': '#961110',
-                    'type': 'line'
-                },
-                'safe_pump_48_20_1h': {
-                    'color': '#961C0',
-                    'type': 'line'
-                },
-                'safe_pump_48_30_1h': {
-                    'color': '#961130',
-                    'type': 'line'
-                },
-                'safe_pump_48_40_1h': {
-                    'color': '#961140',
-                    'type': 'line'
-                },
-                'safe_pump_48_50_1h': {
-                    'color': '#961150',
-                    'type': 'line'
-                },
-                'safe_pump_48_60_1h': {
-                    'color': '#961160',
-                    'type': 'line'
-                },
-                'safe_pump_48_70_1h': {
-                    'color': '#961170',
-                    'type': 'line'
-                },
-                'safe_pump_48_80_1h': {
-                    'color': '#961180',
-                    'type': 'line'
-                },
-                'safe_pump_48_90_1h': {
-                    'color': '#961190',
-                    'type': 'line'
-                },
-                'safe_pump_48_100_1h': {
-                    'color': '#9611A0',
-                    'type': 'line'
-                },
-                'safe_pump_48_120_1h': {
-                    'color': '#9611C0',
-                    'type': 'line'
-                }
+                'cti_1h': {'color': 'pink' },
+                'safe_pump_24_10_1h': {'color': '#481110' },
+                'safe_pump_24_20_1h': {'color': '#481C0' },
+                'safe_pump_24_30_1h': {'color': '#481130' },
+                'safe_pump_24_40_1h': {'color': '#481140' },
+                'safe_pump_24_50_1h': {'color': '#481150' },
+                'safe_pump_24_60_1h': {'color': '#481160' },
+                'safe_pump_24_70_1h': {'color': '#481170' },
+                'safe_pump_24_80_1h': {'color': '#481180' },
+                'safe_pump_24_90_1h': {'color': '#481190' },
+                'safe_pump_24_100_1h': {'color': '#4811A0' },
+                'safe_pump_24_120_1h': {'color': '#4811C0' },
+                'safe_pump_36_10_1h': {'color': '#721110' },
+                'safe_pump_36_20_1h': {'color': '#721C0' },
+                'safe_pump_36_30_1h': {'color': '#721130' },
+                'safe_pump_36_40_1h': {'color': '#721140' },
+                'safe_pump_36_50_1h': {'color': '#721150' },
+                'safe_pump_36_60_1h': {'color': '#721160' },
+                'safe_pump_36_70_1h': {'color': '#721170' },
+                'safe_pump_36_80_1h': {'color': '#721180' },
+                'safe_pump_36_90_1h': {'color': '#721190' },
+                'safe_pump_36_100_1h': {'color': '#7211A0' },
+                'safe_pump_36_120_1h': {'color': '#7211C0' },
+                'safe_pump_48_10_1h': {'color': '#961110' },
+                'safe_pump_48_20_1h': {'color': '#961C0' },
+                'safe_pump_48_30_1h': {'color': '#961130' },
+                'safe_pump_48_40_1h': {'color': '#961140' },
+                'safe_pump_48_50_1h': {'color': '#961150' },
+                'safe_pump_48_60_1h': {'color': '#961160' },
+                'safe_pump_48_70_1h': {'color': '#961170' },
+                'safe_pump_48_80_1h': {'color': '#961180' },
+                'safe_pump_48_90_1h': {'color': '#961190' },
+                'safe_pump_48_100_1h': {'color': '#9611A0' },
+                'safe_pump_48_120_1h': {'color': '#9611C0' }
             }
         }
     }
@@ -2450,19 +2304,19 @@ class NostalgiaForInfinityNext(IStrategy):
 
     def sell_r_1(self, current_profit: float, last_candle) -> tuple:
         if 0.02 > current_profit >= 0.012:
-            if last_candle['r_480'] > -0.5:
+            if last_candle['r_480'] > -0.4:
                 return True, 'signal_profit_w_1_1'
         elif 0.03 > current_profit >= 0.02:
-            if last_candle['r_480'] > -0.6:
+            if last_candle['r_480'] > -0.5:
                 return True, 'signal_profit_w_1_2'
         elif 0.04 > current_profit >= 0.03:
-            if last_candle['r_480'] > -0.7:
+            if last_candle['r_480'] > -0.6:
                 return True, 'signal_profit_w_1_3'
         elif 0.05 > current_profit >= 0.04:
-            if last_candle['r_480'] > -0.8:
+            if last_candle['r_480'] > -0.7:
                 return True, 'signal_profit_w_1_4'
         elif 0.06 > current_profit >= 0.05:
-            if last_candle['r_480'] > -0.9:
+            if last_candle['r_480'] > -1.0:
                 return True, 'signal_profit_w_1_5'
         elif 0.07 > current_profit >= 0.06:
             if last_candle['r_480'] > -2.0:
@@ -2584,6 +2438,45 @@ class NostalgiaForInfinityNext(IStrategy):
 
         return False, None
 
+    def sell_r_5(self, current_profit: float, last_candle) -> tuple:
+        if (0.02 > current_profit >= 0.012):
+            if (last_candle['r_480'] > -1.0) and (last_candle['rsi_14'] > 75.0) and (last_candle['cti_1h'] > 0.92):
+                return True, 'signal_profit_w_5_1'
+        elif (0.03 > current_profit >= 0.02):
+            if (last_candle['r_480'] > -1.5) and (last_candle['rsi_14'] > 75.0) and (last_candle['cti_1h'] > 0.92):
+                return True, 'signal_profit_w_5_2'
+        elif (0.04 > current_profit >= 0.03):
+            if (last_candle['r_480'] > -2.0) and (last_candle['rsi_14'] > 75.0) and (last_candle['cti_1h'] > 0.92):
+                return True, 'signal_profit_w_5_3'
+        elif (0.05 > current_profit >= 0.04):
+            if (last_candle['r_480'] > -2.5) and (last_candle['rsi_14'] > 75.0) and (last_candle['cti_1h'] > 0.92):
+                return True, 'signal_profit_w_5_4'
+        elif (0.06 > current_profit >= 0.05):
+            if (last_candle['r_480'] > -3.0) and (last_candle['rsi_14'] > 75.0) and (last_candle['cti_1h'] > 0.92):
+                return True, 'signal_profit_w_5_5'
+        elif (0.07 > current_profit >= 0.06):
+            if (last_candle['r_480'] > -3.5) and (last_candle['rsi_14'] > 75.0) and (last_candle['cti_1h'] > 0.92):
+                return True, 'signal_profit_w_5_6'
+        elif (0.08 > current_profit >= 0.07):
+            if (last_candle['r_480'] > -4.0) and (last_candle['rsi_14'] > 75.0) and (last_candle['cti_1h'] > 0.92):
+                return True, 'signal_profit_w_5_7'
+        elif (0.09 > current_profit >= 0.08):
+            if (last_candle['r_480'] > -4.5) and (last_candle['rsi_14'] > 75.0) and (last_candle['cti_1h'] > 0.92):
+                return True, 'signal_profit_w_5_8'
+        elif (0.1 > current_profit >= 0.09):
+            if (last_candle['r_480'] > -3.0) and (last_candle['rsi_14'] > 75.0) and (last_candle['cti_1h'] > 0.92):
+                return True, 'signal_profit_w_5_9'
+        elif (0.12 > current_profit >= 0.1):
+            if (last_candle['r_480'] > -2.5) and (last_candle['rsi_14'] > 75.0) and (last_candle['cti_1h'] > 0.92):
+                return True, 'signal_profit_w_5_10'
+        elif (0.2 > current_profit >= 0.12):
+            if (last_candle['r_480'] > -2.0) and (last_candle['rsi_14'] > 75.0) and (last_candle['cti_1h'] > 0.92):
+                return True, 'signal_profit_w_5_11'
+        elif (current_profit >= 0.2):
+            if (last_candle['r_480'] > -1.5) and (last_candle['rsi_14'] > 80.0) and (last_candle['cti_1h'] > 0.92):
+                return True, 'signal_profit_w_5_12'
+
+        return False, None
 
     def mark_profit_target(self, pair: str, trade: "Trade", current_time: "datetime", current_rate: float, current_profit: float, last_candle, previous_candle_1) -> tuple:
         # if self.profit_target_1_enable:
@@ -2613,7 +2506,7 @@ class NostalgiaForInfinityNext(IStrategy):
 
         if (0.04 > current_profit > 0.02) and (last_candle['pm'] <= last_candle['pmax_thresh']) and (last_candle['close'] > last_candle['sma_21'] * 1.1):
             return True, 'signal_profit_q_pmax_bull'
-        if (0.045 > current_profit > 0.003) and (last_candle['pm'] > last_candle['pmax_thresh']) and (last_candle['close'] > last_candle['sma_21'] * 1.016):
+        if (0.045 > current_profit > 0.005) and (last_candle['pm'] > last_candle['pmax_thresh']) and (last_candle['close'] > last_candle['sma_21'] * 1.016):
             return True, 'signal_profit_q_pmax_bear'
 
         return False, None
@@ -2754,6 +2647,11 @@ class NostalgiaForInfinityNext(IStrategy):
         # Williams %R based sell 4, plus CTI
         sell, signal_name = self.sell_r_4(current_profit, last_candle)
         if (sell) and (signal_name is not None):
+            return signal_name + ' ( ' + buy_tag + ')'
+
+        # Williams %R based sell 5, plus  RSI and CTI 1h
+        sell, signal_name = self.sell_r_5(current_profit, last_candle)
+        if sell and (signal_name is not None):
             return signal_name + ' ( ' + buy_tag + ')'
 
         # Profit Target Signal
